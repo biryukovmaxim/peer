@@ -1,0 +1,20 @@
+syntax = "proto3";
+package peer;
+
+service Peer {
+ rpc Greeting(PeerInfo) returns (PeerInfoList) {};
+ rpc Chat(stream ChatMessage) returns (stream ChatMessage) {};
+}
+
+message PeerInfo {
+  string address = 1;
+}
+
+message PeerInfoList {
+  repeated PeerInfo infos = 1;
+}
+
+message ChatMessage {
+  string From = 1;
+  string Content = 2;
+}

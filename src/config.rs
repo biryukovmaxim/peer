@@ -1,16 +1,19 @@
-use crate::tcp_server::Server;
 use clap::{App, Arg};
-use std::collections::HashSet;
-use std::error::Error;
-use std::sync::{Arc, Mutex};
-use tokio::task;
-use tokio::task::JoinHandle;
+use crate::errors::PeerError;
 
-mod tcp_server;
+pub struct Config {
+    pub port: String,
+    pub known_peer_address: Option<String>,
+    pub period: usize,
+}
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    let join = {
+impl Config {
+    pub fn read_config() -> Result<Self, PeerError> {
+        let mut config = Config {
+            port: "".to_string(),
+            known_peer_address: None,
+            period: 0,
+        };
         let matches = App::new("")
             .about("simple p2p app")
             .arg(Arg::with_name("port")
@@ -31,17 +34,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .help("connect to first known peer")
                 .takes_value(true))
             .get_matches();
-        matches.value_of("port")
-            .map(|port| port.to_string())
-            .ok_or("port is required".to_string())
-    };
+        match matches.value_of("port") {
+            Some(port) => config.port = port.to_string(),
+            None => return Err(PeerError::ReadConfig("port is required".to_string())),
+        }
+        match matches.value_of("connect") {
+            Some(peer) => config.known_peer_address = Some(peer.to_string()),
+            None => config.known_peer_address = None
+        }
 
-    let port = join.unwrap();
-    let peers: Arc<Mutex<HashSet<String>>> = Arc::new(Mutex::new(HashSet::new()));
-
-    tokio::spawn(async move {
-        let server = Server::new(port.to_string(), peers.clone());
-        server.run().await;
-    });
-    Ok(())
+        Ok(config)
+    }
 }
