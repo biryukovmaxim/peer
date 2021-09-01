@@ -1,12 +1,20 @@
 use std::error::Error;
 use std::fmt::{Debug, Formatter, Display};
 use std::net::AddrParseError;
+use tonic::Status;
 
 pub enum PeerError{
     ReadConfig(String),
     ParseServerError(String),
     Other(String),
 }
+
+impl From<Status> for PeerError {
+    fn from(status: Status) -> Self {
+        PeerError::Other(status.to_string())
+    }
+}
+
 
 impl From<tonic::transport::Error> for PeerError {
     fn from(err: tonic::transport::Error) -> Self {

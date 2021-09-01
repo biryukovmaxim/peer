@@ -36,11 +36,11 @@ impl Config {
                 .takes_value(true))
             .get_matches();
         match matches.value_of("port") {
-            Some(port) => config.address =  format!("localhost:{}", port),
+            Some(port) => config.address =  format!("127.0.0.1:{}", port),
             None => return Err(PeerError::ReadConfig("port is required".to_string())),
         }
         match matches.value_of("connect") {
-            Some(peer) => config.known_peer_address = Some(peer.to_string()),
+            Some(peer) => config.known_peer_address = Some(format!("127.0.0.1:{}", peer)),
             None => config.known_peer_address = None
         }
 
