@@ -18,7 +18,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let (tx, _) = tokio::sync::broadcast::channel(16);
     let sender = Arc::new(tx);
     let peer = PeerService::new(format!("localhost:{}", config.port), sender);
-
-    Server::builder().add_service(PeerServer::new(peer.clone())).serve(peer.address.parse().unwrap()).await.unwrap();
+    peer.run().await?;
     Ok(())
 }

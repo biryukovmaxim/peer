@@ -8,6 +8,9 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast::Sender;
 use tokio::sync::{mpsc};
 use tokio_stream::wrappers::ReceiverStream;
+use tonic::transport::{Server, Error};
+use crate::errors::PeerError;
+use std::future::Future;
 
 pub mod api {
     tonic::include_proto!("peer"); // The string specified here must match the proto package name
@@ -20,12 +23,20 @@ pub struct PeerService {
 }
 
 impl PeerService {
-    pub(crate) fn new(address: String, sender: Arc<Sender<String>>) -> Self {
+    pub fn new(address: String, sender: Arc<Sender<String>>) -> Self {
         PeerService {
             peers: Arc::new(Mutex::new(HashSet::new())),
             address,
             sender,
         }
+    }
+
+    pub async fn run(self) -> Result<(), PeerError> {
+        let address = self.address.parse()?;
+        Server::builder()
+            .add_service(PeerServer::new(self))
+            .serve(address).await
+            .map_err(|err| err.into())
     }
 }
 
