@@ -1,6 +1,6 @@
 use tonic::{Request, Response, Status, Streaming};
 
-use crate::peer::peer_server::{Peer};
+use crate::peer::peer_server::{Peer, PeerServer};
 pub use api::peer_server::*;
 pub use api::*;
 use std::collections::HashSet;
@@ -8,9 +8,12 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast::Sender;
 use tokio::sync::{mpsc};
 use tokio_stream::wrappers::ReceiverStream;
-use tonic::transport::{Server, Error};
+use tonic::transport::{Server};
 use crate::errors::PeerError;
-use std::future::Future;
+use std::time::SystemTime;
+use tokio_stream::StreamExt;
+use crate::config::Config;
+use tokio::time::{sleep, Duration};
 
 pub mod api {
     tonic::include_proto!("peer"); // The string specified here must match the proto package name
@@ -18,25 +21,36 @@ pub mod api {
 #[derive(Debug, Clone)]
 pub struct PeerService {
     peers: Arc<Mutex<HashSet<String>>>,
-    pub(crate) address: String,
-    sender: Arc<Sender<String>>,
+    config: Config,
+    sender: Arc<Mutex<Sender<String>>>,
 }
 
 impl PeerService {
-    pub fn new(address: String, sender: Arc<Sender<String>>) -> Self {
+    pub fn new(config: Config) -> Self {
+        let (tx, _) =tokio::sync::broadcast::channel(16);
         PeerService {
             peers: Arc::new(Mutex::new(HashSet::new())),
-            address,
-            sender,
+            config,
+            sender: Arc::new(Mutex::new(tx)),
         }
     }
 
     pub async fn run(self) -> Result<(), PeerError> {
-        let address = self.address.parse()?;
-        Server::builder()
+        let address = self.config.address.parse()?;
+        let sender = &self.sender.clone();
+        let producer = async {
+            loop {
+                sender.lock().unwrap().send("some string".to_string());
+                sleep(Duration::from_secs(10));
+            }
+        };
+
+        let server_handler = Server::builder()
             .add_service(PeerServer::new(self))
-            .serve(address).await
-            .map_err(|err| err.into())
+            .serve(address);
+
+        let (_, second) = tokio::join!(producer, server_handler);
+        second.map_err(|err| err.into())
     }
 }
 
@@ -70,20 +84,34 @@ impl Peer for PeerService {
         &self,
         request: Request<Streaming<ChatMessage>>,
     ) -> Result<Response<Self::ChatStream>, Status> {
+
+        let mut inc_stream:Streaming<ChatMessage> = request.into_inner();
+        while let Some(chat_message) = inc_stream.next().await {
+            let chat_message:ChatMessage = chat_message?;
+            // todo use logger
+            println!("{:?} - Received message [{}] from \"{}\"", SystemTime::now(), chat_message.content, chat_message.from)
+        }
+
         let (tx, rx) = mpsc::channel(4);
-        let mut rx2 = self.sender.subscribe();
-        let address = self.address.clone();
+        let mut rx2 = self.sender.lock().unwrap().subscribe();
+        let address = self.config.address.clone();
 
         tokio::spawn(async move {
             loop {
                 let message_value = rx2.recv().await.unwrap();
+
                 let send_res = tx.send(Ok(ChatMessage {
                     from: address.clone(),
-                    content: message_value,
+                    content: message_value.clone(),
                 })).await;
-                if let Err(err) = send_res {
-                    println!("{}", err);
-                    break;
+                match send_res {
+                    // todo use logger
+                    Ok(()) => println!("{:?} - Sending message [{}] to {}", SystemTime::now(), message_value, "some1"),
+                    Err(err) => {
+                        // todo use logger
+                        println!("{}", err);
+                        break;
+                    }
                 }
             }
         });
@@ -92,7 +120,7 @@ impl Peer for PeerService {
     }
 }
 
-/*#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PeerInfo {
     #[prost(string, tag = "1")]
     pub address: ::prost::alloc::string::String,
@@ -358,4 +386,3 @@ pub mod peer_server {
         const NAME: &'static str = "peer.Peer";
     }
 }
-*/

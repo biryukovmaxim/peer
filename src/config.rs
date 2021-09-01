@@ -1,8 +1,9 @@
 use clap::{App, Arg};
 use crate::errors::PeerError;
 
+#[derive(Debug, Clone)]
 pub struct Config {
-    pub port: String,
+    pub address: String,
     pub known_peer_address: Option<String>,
     pub period: usize,
 }
@@ -10,7 +11,7 @@ pub struct Config {
 impl Config {
     pub fn read_config() -> Result<Self, PeerError> {
         let mut config = Config {
-            port: "".to_string(),
+            address: "".to_string(),
             known_peer_address: None,
             period: 0,
         };
@@ -35,7 +36,7 @@ impl Config {
                 .takes_value(true))
             .get_matches();
         match matches.value_of("port") {
-            Some(port) => config.port = port.to_string(),
+            Some(port) => config.address =  format!("localhost:{}", port),
             None => return Err(PeerError::ReadConfig("port is required".to_string())),
         }
         match matches.value_of("connect") {
