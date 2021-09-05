@@ -2,8 +2,8 @@ syntax = "proto3";
 package peer;
 
 service Peer {
- rpc Greeting(PeerInfo) returns (PeerInfoList) {};
- rpc Chat(stream ChatMessage) returns (stream ChatMessage) {};
+ rpc AddPeer(PeerInfo) returns (PeerInfoList) {};
+ rpc Subscribe(PeerInfo) returns (stream ChatMessage) {};
 }
 
 message PeerInfo {
@@ -15,6 +15,6 @@ message PeerInfoList {
 }
 
 message ChatMessage {
-  string From = 1;
-  string Content = 2;
+  string from = 1;
+  string content = 2;
 }
