@@ -141,6 +141,7 @@ impl PeerProvider {
                 Err(err) => {
                     // todo use logger
                     println!("{}", err);
+                    self.peers.insert(remote_peer_address, false);
                     break;
                 }
             }
@@ -160,7 +161,7 @@ async fn client_subscribe_process(
                 Local::now(),
                 &remote_peer,
             );
-            peers.insert(remote_peer, true);
+            peers.insert(remote_peer.clone(), true);
             while let Ok(chat_message_resp) = stream.message().await {
                 if let Some(message) = chat_message_resp {
                     // todo use logger
@@ -172,6 +173,12 @@ async fn client_subscribe_process(
                     );
                 }
             }
+            println!(
+                "{:?} - Disconnected from {}",
+                Local::now(),
+                &remote_peer
+            );
+            peers.insert(remote_peer, false);
         }
     });
 }

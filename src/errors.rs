@@ -5,6 +5,7 @@ use std::net::AddrParseError;
 pub enum PeerError {
     ReadConfig(String),
     ParseServerAddressError(String),
+    CannotStartServer(String),
     Other(String),
 }
 
@@ -28,6 +29,7 @@ impl Debug for PeerError {
                 write!(f, "server address parsing error: {}", str)
             }
             PeerError::Other(err) => write!(f, "unknown error: {}", err),
+            PeerError::CannotStartServer(err) => write!(f, "can't start server error: {}", err)
         }
     }
 }
@@ -40,6 +42,7 @@ impl Display for PeerError {
                 write!(f, "server address parsing error: {}", str)
             }
             PeerError::Other(err) => write!(f, "unknown error: {}", err),
+            PeerError::CannotStartServer(err) => write!(f, "can't start server error: {}", err)
         }
     }
 }

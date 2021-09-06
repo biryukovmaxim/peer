@@ -18,11 +18,15 @@ impl Server {
     pub async fn run(self) -> Result<(), PeerError> {
         self.peer_provider.run_gossip_producer(self.period).await;
         let address = self.local_address.clone();
+        let cloned_address = address.clone();
+        tokio::spawn(async move {
+           println!("My Peer address is \"{}\"", cloned_address)
+        });
         tonic::transport::Server::builder()
             .add_service(PeerServer::new(self))
             .serve(address.parse()?)
             .await
-            .map_err(|err| err.into())
+            .map_err(|err| PeerError::CannotStartServer(err.to_string()))
     }
     pub fn new(local_address: String, peer_provider: Arc<PeerProvider>, period: u64) -> Self {
         Server {
