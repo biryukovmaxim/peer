@@ -44,6 +44,7 @@ impl Config {
             )
             .arg(
                 Arg::with_name("broadcast_size")
+                    .help("the maximum number of messages the Peer can retain at any given time")
                     .short("bs")
                     .takes_value(true)
                     .default_value("10"),
